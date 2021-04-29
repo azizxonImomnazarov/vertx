@@ -1,5 +1,7 @@
 package com.safenetpay.firstproject.firstproject;
 
+import java.util.Iterator;
+
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -20,8 +22,8 @@ public class DataBase {
 
   public DataBase(Vertx vertx) {
     connectOptions = new PgConnectOptions()
-      .setPort(5432)
-      .setHost("127.0.0.1")
+      .setPort(5433)
+      .setHost("localhost")
       .setDatabase("employee")
       .setUser("postgres")
       .setPassword("postgres");
@@ -121,4 +123,112 @@ public class DataBase {
         });
     return answer.future();
   }
+
+  public Future<JsonObject> getDataWithInfo(Integer id) { 
+    Promise<JsonObject> promise = Promise.promise();
+    client
+    .preparedQuery("select * from employee_info where id = $1")
+    .execute(Tuple.of(id),rc -> {
+      JsonObject jsonObject = new JsonObject();
+      if(rc.succeeded()) {
+        RowSet<Row> rowSet = rc.result();
+        Iterator<Row> iterator = rowSet.iterator();
+        if(iterator.hasNext()) {
+          Row row = iterator.next();
+          jsonObject
+          .put("id", row.getInteger("id"))
+          .put("passport", row.getString("passport"))
+          .put("country", row.getString("country"))
+          .put("is_married" , row.getBoolean("is_married"))
+          .put("employeeId", row.getInteger("employeeid"));
+        }
+      } else {
+        jsonObject
+        .put("success", false)
+        .put("cause", rc.cause().getMessage());
+      }
+      promise.complete(jsonObject);
+    });
+    return promise.future();
+  }
+
+  public Future<JsonObject> getEmployeeById(JsonObject jsonObject, Integer employeeId) {
+    Promise<JsonObject> promise = Promise.promise();
+    client
+    .preparedQuery("select * from employee where id = $1")
+    .execute(Tuple.of(employeeId),rc -> {
+      if(rc.succeeded()) {
+        RowSet<Row> rowSet = rc.result();
+        Iterator<Row> iterator = rowSet.iterator();
+        if(iterator.hasNext()) {
+          Row row = iterator.next();
+          jsonObject
+          .put("id", row.getInteger("id"))
+          .put("name", row.getString("name"))
+          .put("surName", row.getString("sur_name"))
+          .put("department" , row.getString("department"))
+          .put("salary", row.getDouble("salary"));
+        }
+      } else {
+        jsonObject
+        .put("success", false)
+        .put("cause", rc.cause().getMessage());
+      }
+      promise.complete(jsonObject);
+    });
+    return promise.future();
+  }
+
+public Future<JsonArray> getAllDataWithInfo() {
+  Promise<JsonArray> promise = Promise.promise();
+  client
+    .preparedQuery("SELECT * FROM employee_info")
+    .execute(ar -> {
+      if (ar.succeeded()) {
+        JsonArray jsonArray = new JsonArray();
+        RowSet<Row> rows = ar.result();
+        for (Row row : rows) {
+          JsonObject jsonObject = new JsonObject()
+            .put("id", row.getInteger("id"))
+            .put("passport", row.getString("passport"))
+            .put("country", row.getString("country"))
+            .put("isMarried", row.getBoolean("is_married"))
+            .put("employeeId", row.getInteger("employeeid"));
+          jsonArray.add(jsonObject);
+        }
+        promise.complete(jsonArray);
+      } else {
+        System.out.println(ar.cause());
+      }
+    });
+  return promise.future();
+}
+public Future<JsonArray> getData(JsonArray jsonArray) {
+  Promise<JsonArray> promise = Promise.promise();
+  JsonArray jsonArray2 = new JsonArray();
+  for (int i = 0; i < jsonArray.size(); i++) {
+    JsonObject jsonObject = jsonArray.getJsonObject(i);
+    client
+    .preparedQuery("SELECT * FROM employee WHERE id = $1")
+    .execute(Tuple.of(jsonObject.getInteger("employeeId")),
+    rc -> {
+      if (rc.succeeded()) {
+        RowSet<Row> rowSet = rc.result();
+        Iterator<Row> iterator = rowSet.iterator();
+        Row row = iterator.next();
+        jsonObject
+        .put("id", row.getInteger("id"))
+        .put("name", row.getString("name"))
+        .put("surName", row.getString("sur_name"))
+        .put("department", row.getString("department"))
+        .put("salary", row.getDouble("salary"));
+        jsonArray2.add(jsonObject);
+        promise.complete(jsonArray);
+      } else {
+        System.out.println(rc.cause());
+      }
+    });
+  }
+  return promise.future();
+}
 }
