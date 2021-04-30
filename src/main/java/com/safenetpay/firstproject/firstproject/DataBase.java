@@ -22,7 +22,7 @@ public class DataBase {
 
   public DataBase(Vertx vertx) {
     connectOptions = new PgConnectOptions()
-      .setPort(5433)
+      .setPort(5432)
       .setHost("localhost")
       .setDatabase("employee")
       .setUser("postgres")
@@ -124,7 +124,7 @@ public class DataBase {
     return answer.future();
   }
 
-  public Future<JsonObject> getDataWithInfo(Integer id) { 
+  public Future<JsonObject> getDataWithInfo(Integer id) {
     Promise<JsonObject> promise = Promise.promise();
     client
     .preparedQuery("select * from employee_info where id = $1")
@@ -222,7 +222,7 @@ public Future<JsonArray> getData(JsonArray jsonArray) {
         .put("surName", row.getString("sur_name"))
         .put("department", row.getString("department"))
         .put("salary", row.getDouble("salary"));
-        jsonArray2.add(jsonObject);
+        jsonArray.add(jsonObject);
         promise.complete(jsonArray);
       } else {
         System.out.println(rc.cause());
@@ -231,4 +231,29 @@ public Future<JsonArray> getData(JsonArray jsonArray) {
   }
   return promise.future();
 }
+
+  public Future<JsonArray> getEmployeeInfo() {
+    Promise<JsonArray> promise = Promise.promise();
+    client
+      .preparedQuery("SELECT * FROM employee_info")
+      .execute(ar -> {
+        if (ar.succeeded()) {
+          JsonArray jsonArray = new JsonArray();
+          RowSet<Row> rows = ar.result();
+          for (Row row : rows) {
+            JsonObject jsonObject = new JsonObject()
+              .put("id", row.getInteger("id"))
+              .put("passport", row.getString("passport"))
+              .put("country", row.getString("country"))
+              .put("isMarried", row.getBoolean("is_married"))
+              .put("employeeId", row.getDouble("employeeid"));
+            jsonArray.add(jsonObject);
+          }
+          promise.complete(jsonArray);
+        } else {
+          ar.cause().printStackTrace();
+        }
+      });
+    return promise.future();
+  }
 }
