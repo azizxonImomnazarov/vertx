@@ -27,13 +27,6 @@ public class MainVerticle extends AbstractVerticle {
       System.out.println(ms.isSend());
       System.out.println(ms.replyAddress());
       ms.reply("is resived message " + ms.body());
-      ms.replyAndRequest("getname", ar -> {
-        if (ar.succeeded()) {
-          System.out.println(ar.result().body());
-        } else {
-          System.out.println(ar.cause().getMessage());
-        }
-      });
     });
     DataBase dataBase = new DataBase(vertx);
     Router router = Router.router(vertx);
@@ -57,7 +50,7 @@ public class MainVerticle extends AbstractVerticle {
         }
         CompositeFuture.all(futures)
           .onComplete(rc2 -> {
-          rc.response().putHeader("content-type", "application/json").end(rc2.result().toString());
+          rc.response().putHeader("content-type", "application/json").end(futures.get(0).result().toString());
         });
       });
     });
