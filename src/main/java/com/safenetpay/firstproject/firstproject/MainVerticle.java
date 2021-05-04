@@ -1,25 +1,64 @@
 package com.safenetpay.firstproject.firstproject;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.safenetpay.firstproject.testvertx.FirstVerticale;
 import io.vertx.core.*;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+
 public class MainVerticle extends AbstractVerticle {
 
   public static void main(String[] args) {
     Vertx vertx = Vertx.vertx();
-    vertx.deployVerticle(new MainVerticle());
+    vertx.deployVerticle(new MainVerticle(), new DeploymentOptions().setWorker(false));
   }
 
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
+    vertx.deployVerticle(new FirstVerticale());
+    vertx.eventBus().consumer("vertx.api.hello", ms -> {
+      System.out.println(ms.address() + " " + ms.body());
+      System.out.println(ms.isSend());
+      System.out.println(ms.replyAddress());
+      ms.reply("is resived message " + ms.body());
+      ms.replyAndRequest("getname", ar -> {
+        if (ar.succeeded()) {
+          System.out.println(ar.result().body());
+        } else {
+          System.out.println(ar.cause().getMessage());
+        }
+      });
+    });
     DataBase dataBase = new DataBase(vertx);
     Router router = Router.router(vertx);
     router.get("/api/employees").handler(rc -> {
+      long before = System.currentTimeMillis();
       Future<JsonArray> futureData = dataBase.getData();
       futureData.onComplete(rc1 -> {
         rc.response().putHeader("content-type", "application/json").end(rc1.result().toString());
+      });
+      long after = System.currentTimeMillis();
+      System.out.println(after - before);
+    });
+
+    router.post("/api/employees/all").handler(rc -> {
+      rc.request().body().onComplete(rc1 -> {
+        List<Future> futures = new LinkedList<>();
+        Gson gson = new Gson();
+        List<Employee> employees = gson.fromJson(rc1.result().toString(), new TypeToken<List<Employee>>(){}.getType());
+        for (Employee employee : employees) {
+          futures.add(dataBase.saveData(new JsonObject(gson.toJson(employee))));
+        }
+        CompositeFuture.all(futures)
+          .onComplete(rc2 -> {
+          rc.response().putHeader("content-type", "application/json").end(rc2.result().toString());
+        });
       });
     });
 
@@ -77,17 +116,18 @@ public class MainVerticle extends AbstractVerticle {
               JsonObject employeeInfo = employeesInfo.getJsonObject(j);
               if (employee.getInteger("id").equals(employeeInfo.getInteger("employeeId"))) {
                 employee
-                  .put("passport",employeeInfo.getString("passport"))
-                  .put("country",employeeInfo.getString("country"))
-                  .put("isMarried",employeeInfo.getString("isMarried"));
+                  .put("passport", employeeInfo.getString("passport"))
+                  .put("country", employeeInfo.getString("country"))
+                  .put("isMarried", employeeInfo.getString("isMarried"));
               }
             }
           }
           rc.response()
-            .putHeader("content-type","application/json")
+            .putHeader("content-type", "application/json")
             .end(employees.toString());
         } else {
-          all.cause().printStackTrace();;
+          all.cause().printStackTrace();
+          ;
         }
       });
     });
