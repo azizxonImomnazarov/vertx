@@ -1,7 +1,6 @@
 package com.safenetpay.firstproject.firstproject;
 
-import java.util.Iterator;
-
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -9,10 +8,9 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgPool;
-import io.vertx.sqlclient.PoolOptions;
-import io.vertx.sqlclient.Row;
-import io.vertx.sqlclient.RowSet;
-import io.vertx.sqlclient.Tuple;
+import io.vertx.sqlclient.*;
+
+import java.util.Iterator;
 
 public class DataBase {
 
@@ -22,7 +20,7 @@ public class DataBase {
 
   public DataBase(Vertx vertx) {
     connectOptions = new PgConnectOptions()
-      .setPort(5432)
+      .setPort(5433)
       .setHost("localhost")
       .setDatabase("employee")
       .setUser("postgres")
@@ -112,8 +110,15 @@ public class DataBase {
       .execute(Tuple.of(id == null ? employee.getInteger("id") : id),
         rc -> {
           JsonObject jsonObject = new JsonObject();
+          RowSet<Row> rowSet = rc.result();
           if (rc.succeeded()) {
-            jsonObject.put("success", true);
+
+            if (rowSet.rowCount() > 0) {
+              jsonObject.put("success", true);
+            } else {
+              jsonObject.put("success", false);
+            }
+            
           } else {
             jsonObject
               .put("success", false)
@@ -252,6 +257,30 @@ public Future<JsonArray> getData(JsonArray jsonArray) {
           promise.complete(jsonArray);
         } else {
           ar.cause().printStackTrace();
+        }
+      });
+    return promise.future();
+  }
+
+  public Future<JsonArray> getDataWithFunc() {
+    Promise<JsonArray> promise = Promise.promise();
+    client
+      .preparedQuery("select * from get_employees()")
+      .execute(ar -> {
+        if (ar.succeeded()) {
+          JsonArray jsonArray = new JsonArray();
+          RowSet<Row> rows = ar.result();
+          for (Row row : rows) {
+            JsonObject jsonObject = new JsonObject()
+              // .put("id", row.getInteger("id"))
+              .put("name", row.getString("name"))
+              .put("surName", row.getString("sur_name"))
+              .put("salary", row.getDouble("salary"));
+            jsonArray.add(jsonObject);
+          }
+          promise.complete(jsonArray);
+        } else {
+          System.out.println(ar.cause());
         }
       });
     return promise.future();
