@@ -1,6 +1,5 @@
 package com.safenetpay.firstproject.firstproject;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
@@ -210,7 +209,6 @@ public Future<JsonArray> getAllDataWithInfo() {
 }
 public Future<JsonArray> getData(JsonArray jsonArray) {
   Promise<JsonArray> promise = Promise.promise();
-  JsonArray jsonArray2 = new JsonArray();
   for (int i = 0; i < jsonArray.size(); i++) {
     JsonObject jsonObject = jsonArray.getJsonObject(i);
     client

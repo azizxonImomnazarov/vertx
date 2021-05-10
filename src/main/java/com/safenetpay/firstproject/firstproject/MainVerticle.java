@@ -3,10 +3,13 @@ package com.safenetpay.firstproject.firstproject;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import org.apache.log4j.Logger;
+
 import io.vertx.config.ConfigRetriever;
 import io.vertx.config.ConfigRetrieverOptions;
 import io.vertx.config.ConfigStoreOptions;
 import io.vertx.core.*;
+import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
@@ -16,8 +19,11 @@ import java.util.List;
 
 public class MainVerticle extends AbstractVerticle {
 
+  private static final Logger LOGGER = Logger.getLogger(MainVerticle.class);
+
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
+    LOGGER.debug("application is started .....");
 
     DataBase dataBase = new DataBase(vertx);
     Router router = Router.router(vertx);
@@ -32,14 +38,18 @@ public class MainVerticle extends AbstractVerticle {
       System.out.println(after - before);
     });
 
+    router.options("/api/employees").handler(rc -> {
+      rc.response()
+      .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+    });
+
     router.get("/api/employees").handler(rc -> {
-      long before = System.currentTimeMillis();
       Future<JsonArray> futureData = dataBase.getData();
       futureData.onComplete(rc1 -> {
-        rc.response().putHeader("content-type", "application/json").end(rc1.result().toString());
+        rc.response()
+        .putHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,"*").end(rc1.result().toString());
       });
-      long after = System.currentTimeMillis();
-      System.out.println(after - before);
     });
 
     router.post("/api/employees/all").handler(rc -> {
@@ -137,7 +147,6 @@ public class MainVerticle extends AbstractVerticle {
       });
     });
 
-    
 
     ConfigStoreOptions fileStore = new ConfigStoreOptions()
     .setType("file")
@@ -160,7 +169,7 @@ public class MainVerticle extends AbstractVerticle {
          h -> {
               if (h.succeeded()) {
                 startPromise.complete();
-                System.out.println("HTTP server started on port " + port);
+                LOGGER.info("HTTP server started on port " + port);
               } else {
                 startPromise.fail(h.cause());
               }
