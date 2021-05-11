@@ -19,7 +19,7 @@ public class DataBase {
 
   public DataBase(Vertx vertx) {
     connectOptions = new PgConnectOptions()
-      .setPort(5433)
+      .setPort(5432)
       .setHost("localhost")
       .setDatabase("employee")
       .setUser("postgres")
@@ -117,7 +117,7 @@ public class DataBase {
             } else {
               jsonObject.put("success", false);
             }
-            
+
           } else {
             jsonObject
               .put("success", false)
@@ -202,7 +202,7 @@ public Future<JsonArray> getAllDataWithInfo() {
         }
         promise.complete(jsonArray);
       } else {
-        System.out.println(ar.cause());
+        System.out.println(ar.cause().getMessage());
       }
     });
   return promise.future();
@@ -263,7 +263,7 @@ public Future<JsonArray> getData(JsonArray jsonArray) {
   public Future<JsonArray> getDataWithFunc() {
     Promise<JsonArray> promise = Promise.promise();
     client
-      .preparedQuery("select * from get_employees()")
+      .preparedQuery("select * from employee")
       .execute(ar -> {
         if (ar.succeeded()) {
           JsonArray jsonArray = new JsonArray();

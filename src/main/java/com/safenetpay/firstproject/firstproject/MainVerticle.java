@@ -3,6 +3,7 @@ package com.safenetpay.firstproject.firstproject;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import io.netty.handler.codec.http.HttpHeaderValues;
 import org.apache.log4j.Logger;
 
 import io.vertx.config.ConfigRetriever;
@@ -21,6 +22,10 @@ public class MainVerticle extends AbstractVerticle {
 
   private static final Logger LOGGER = Logger.getLogger(MainVerticle.class);
 
+  public static void main(String[] args) {
+    Vertx vertx = Vertx.vertx();
+    vertx.deployVerticle(new MainVerticle());
+  }
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
     LOGGER.debug("application is started .....");
@@ -28,27 +33,40 @@ public class MainVerticle extends AbstractVerticle {
     DataBase dataBase = new DataBase(vertx);
     Router router = Router.router(vertx);
 
-    router.get("/api/employees/function").handler(rc -> {
-      long before = System.currentTimeMillis();
-      Future<JsonArray> futureData = dataBase.getDataWithFunc();
-      futureData.onComplete(rc1 -> {
-        rc.response().putHeader("content-type", "application/json").end(rc1.result().toString());
-      });
-      long after = System.currentTimeMillis();
-      System.out.println(after - before);
-    });
-
     router.options("/api/employees").handler(rc -> {
       rc.response()
-      .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*");
+        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS,"GET, POST, DELETE, PUT, PATCH, OPTIONS")
+        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,"Content-Type, api_key, Authorization")
+        .putHeader(HttpHeaders.CONTENT_TYPE,HttpHeaderValues.APPLICATION_JSON)
+        .end();
+    });
+
+    router.options("/api/employees/:id").handler(rc -> {
+      rc.response()
+        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS,"GET, POST, DELETE, PUT, PATCH, OPTIONS")
+        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,"Content-Type, api_key, Authorization")
+        .putHeader(HttpHeaders.CONTENT_TYPE,HttpHeaderValues.APPLICATION_JSON)
+        .end();
+    });
+
+    router.get("/api/employees/function").handler(rc -> {
+      Future<JsonArray> futureData = dataBase.getDataWithFunc();
+      futureData.onComplete(rc1 -> {
+        rc.response()
+          .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+          .end(rc1.result().toString());
+      });
     });
 
     router.get("/api/employees").handler(rc -> {
       Future<JsonArray> futureData = dataBase.getData();
       futureData.onComplete(rc1 -> {
         rc.response()
-        .putHeader(HttpHeaders.CONTENT_TYPE, "application/json")
-        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,"*").end(rc1.result().toString());
+        .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,"*")
+        .end(rc1.result().encode());
       });
     });
 
@@ -62,7 +80,10 @@ public class MainVerticle extends AbstractVerticle {
           futures.add(dataBase.saveData(new JsonObject(gson.toJson(employee))));
         }
         CompositeFuture.all(futures).onComplete(rc2 -> {
-          rc.response().putHeader("content-type", "application/json").end(futures.get(0).result().toString());
+          rc.response()
+            .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+            .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,"*")
+            .end(futures.get(0).result().toString());
         });
       });
     });
@@ -71,7 +92,10 @@ public class MainVerticle extends AbstractVerticle {
       rc.request().body().onComplete(rc1 -> {
         Future<JsonObject> answer = dataBase.saveData(rc1.result().toJsonObject());
         answer.onComplete(rc2 -> {
-          rc.response().putHeader("content-type", "application/json").end(rc2.result().toString());
+          rc.response()
+            .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+            .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,"*")
+            .end(rc2.result().encode());
         });
       });
     });
@@ -81,7 +105,10 @@ public class MainVerticle extends AbstractVerticle {
         Future<JsonObject> answer = dataBase.updateData(rc1.result().toJsonObject(),
             Integer.valueOf(rc.request().getParam("id")));
         answer.onComplete(rc2 -> {
-          rc.response().putHeader("content-type", "application/json").end(rc2.result().toString());
+          rc.response()
+            .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+            .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,"*")
+            .end(rc2.result().encode());
         });
       });
     });
@@ -91,7 +118,10 @@ public class MainVerticle extends AbstractVerticle {
         Future<JsonObject> answer = dataBase.deleteData(rc1.result().toJsonObject(),
             Integer.valueOf(rc.request().getParam("id")));
         answer.onComplete(rc2 -> {
-          rc.response().putHeader("content-type", "application/json").end(rc2.result().toString());
+          rc.response()
+            .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+            .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,"*")
+            .end(rc2.result().encode());
         });
       });
     });
@@ -102,7 +132,7 @@ public class MainVerticle extends AbstractVerticle {
         JsonArray jsonArray = rc1.result();
         Future<JsonArray> ans = dataBase.getData(jsonArray);
         ans.onComplete(rc2 -> {
-          rc.response().end(rc2.result().toString());
+          rc.response().end(rc2.result().encode());
         });
       });
     });
@@ -142,7 +172,7 @@ public class MainVerticle extends AbstractVerticle {
         Integer employeeId = Integer.parseInt(jsonObject.getString("employeeId"));
         Future<JsonObject> ans = dataBase.getEmployeeById(jsonObject, employeeId);
         ans.onComplete(rc2 -> {
-          rc.response().end(rc2.result().toString());
+          rc.response().end(rc2.result().encode());
         });
       });
     });
@@ -159,7 +189,7 @@ public class MainVerticle extends AbstractVerticle {
 
     conf.getConfig(ar -> {
       if (ar.failed()) {
-        System.out.println(ar.cause());
+        LOGGER.error("Failed , {}",ar.cause());
       } else {
         JsonObject config = ar.result();
         JsonObject http = config.getJsonObject("http");
