@@ -14,6 +14,11 @@ import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.StaticHandler;
+import io.vertx.ext.web.openapi.RouterBuilder;
+import io.vertx.ext.web.validation.RequestParameter;
+import io.vertx.ext.web.validation.RequestParameters;
+import io.vertx.ext.web.validation.ValidationHandler;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -26,47 +31,44 @@ public class MainVerticle extends AbstractVerticle {
     Vertx vertx = Vertx.vertx();
     vertx.deployVerticle(new MainVerticle());
   }
+
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
     LOGGER.debug("application is started .....");
 
+
     DataBase dataBase = new DataBase(vertx);
     Router router = Router.router(vertx);
 
+    router.route("/*").handler(StaticHandler.create());
+
     router.options("/api/employees").handler(rc -> {
-      rc.response()
-        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS,"GET, POST, DELETE, PUT, PATCH, OPTIONS")
-        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,"Content-Type, api_key, Authorization")
-        .putHeader(HttpHeaders.CONTENT_TYPE,HttpHeaderValues.APPLICATION_JSON)
-        .end();
+      rc.response().putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+          .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, DELETE, PUT, PATCH, OPTIONS")
+          .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, api_key, Authorization")
+          .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON).end();
     });
 
     router.options("/api/employees/:id").handler(rc -> {
-      rc.response()
-        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS,"GET, POST, DELETE, PUT, PATCH, OPTIONS")
-        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS,"Content-Type, api_key, Authorization")
-        .putHeader(HttpHeaders.CONTENT_TYPE,HttpHeaderValues.APPLICATION_JSON)
-        .end();
+      rc.response().putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+          .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, "GET, POST, DELETE, PUT, PATCH, OPTIONS")
+          .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, "Content-Type, api_key, Authorization")
+          .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON).end();
     });
 
     router.get("/api/employees/function").handler(rc -> {
       Future<JsonArray> futureData = dataBase.getDataWithFunc();
       futureData.onComplete(rc1 -> {
-        rc.response()
-          .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
-          .end(rc1.result().toString());
+        rc.response().putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+            .end(rc1.result().toString());
       });
     });
 
     router.get("/api/employees").handler(rc -> {
       Future<JsonArray> futureData = dataBase.getData();
       futureData.onComplete(rc1 -> {
-        rc.response()
-        .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
-        .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,"*")
-        .end(rc1.result().encode());
+        rc.response().putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+            .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*").end(rc1.result().encode());
       });
     });
 
@@ -80,10 +82,8 @@ public class MainVerticle extends AbstractVerticle {
           futures.add(dataBase.saveData(new JsonObject(gson.toJson(employee))));
         }
         CompositeFuture.all(futures).onComplete(rc2 -> {
-          rc.response()
-            .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
-            .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,"*")
-            .end(futures.get(0).result().toString());
+          rc.response().putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+              .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*").end(futures.get(0).result().toString());
         });
       });
     });
@@ -92,10 +92,8 @@ public class MainVerticle extends AbstractVerticle {
       rc.request().body().onComplete(rc1 -> {
         Future<JsonObject> answer = dataBase.saveData(rc1.result().toJsonObject());
         answer.onComplete(rc2 -> {
-          rc.response()
-            .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
-            .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,"*")
-            .end(rc2.result().encode());
+          rc.response().putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+              .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*").end(rc2.result().encode());
         });
       });
     });
@@ -105,23 +103,18 @@ public class MainVerticle extends AbstractVerticle {
         Future<JsonObject> answer = dataBase.updateData(rc1.result().toJsonObject(),
             Integer.valueOf(rc.request().getParam("id")));
         answer.onComplete(rc2 -> {
-          rc.response()
-            .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
-            .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,"*")
-            .end(rc2.result().encode());
+          rc.response().putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+              .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*").end(rc2.result().encode());
         });
       });
     });
 
     router.delete("/api/employees/:id").handler(rc -> {
       rc.request().body().onComplete(rc1 -> {
-        Future<JsonObject> answer = dataBase.deleteData(rc1.result().toJsonObject(),
-            Integer.valueOf(rc.request().getParam("id")));
+        Future<JsonObject> answer = dataBase.deleteData(Integer.valueOf(rc.request().getParam("id")));
         answer.onComplete(rc2 -> {
-          rc.response()
-            .putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
-            .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN,"*")
-            .end(rc2.result().encode());
+          rc.response().putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+              .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*").end(rc2.result().encode());
         });
       });
     });
@@ -137,7 +130,7 @@ public class MainVerticle extends AbstractVerticle {
       });
     });
 
-    router.get("/api/employees/info2").handler(rc -> {
+    router.get("/api/employees/info").handler(rc -> {
       Future<JsonArray> employeesAnswer = dataBase.getData();
       Future<JsonArray> employeeInfosAnswer = dataBase.getEmployeeInfo();
       CompositeFuture all = CompositeFuture.all(employeesAnswer, employeeInfosAnswer);
@@ -156,10 +149,10 @@ public class MainVerticle extends AbstractVerticle {
               }
             }
           }
-          rc.response().putHeader("content-type", "application/json").end(employees.toString());
+          rc.response().putHeader(HttpHeaders.CONTENT_TYPE, HttpHeaderValues.APPLICATION_JSON)
+              .putHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "*").end(employees.toString());
         } else {
           all.cause().printStackTrace();
-          ;
         }
       });
     });
@@ -177,11 +170,26 @@ public class MainVerticle extends AbstractVerticle {
       });
     });
 
+    RouterBuilder.create(vertx, "src/main/resources/swaggerApi.yaml").onComplete(ar -> {
+      if (ar.succeeded()) {
+        // Spec loaded with success
+        RouterBuilder routerBuilder = ar.result();
+        routerBuilder.operation("awesomeOperation").handler(routingContext -> {
+          RequestParameters params = routingContext.get(ValidationHandler.REQUEST_CONTEXT_KEY);
+          RequestParameter body = params.body();
+          JsonObject jsonBody = body.getJsonObject();
+          // Do something with body
+        }).failureHandler(routingContext -> {
+          // Handle failure
+        });
+      } else {
+        // Something went wrong during router builder initialization
+        Throwable exception = ar.cause();
+      }
+    });
 
-    ConfigStoreOptions fileStore = new ConfigStoreOptions()
-    .setType("file")
-    .setFormat("json")
-    .setConfig(new JsonObject().put("path", "config.json"));
+    ConfigStoreOptions fileStore = new ConfigStoreOptions().setType("file").setFormat("json")
+        .setConfig(new JsonObject().put("path", "config.json"));
 
     ConfigRetrieverOptions retrieverOptions = new ConfigRetrieverOptions().addStore(fileStore);
 
@@ -189,22 +197,22 @@ public class MainVerticle extends AbstractVerticle {
 
     conf.getConfig(ar -> {
       if (ar.failed()) {
-        LOGGER.error("Failed , {}",ar.cause());
+        LOGGER.error("Failed , {}", ar.cause());
       } else {
         JsonObject config = ar.result();
         JsonObject http = config.getJsonObject("http");
         int port = http.getInteger("port");
         String host = http.getString("host");
-        vertx.createHttpServer().requestHandler(router).listen(port,host,
-         h -> {
-              if (h.succeeded()) {
-                startPromise.complete();
-                LOGGER.info("HTTP server started on port " + port);
-              } else {
-                startPromise.fail(h.cause());
-              }
-            });
+        vertx.createHttpServer().requestHandler(router).listen(port, host, h -> {
+          if (h.succeeded()) {
+            startPromise.complete();
+            LOGGER.info("HTTP server started on port " + port);
+          } else {
+            startPromise.fail(h.cause());
+          }
+        });
       }
     });
+
   }
 }

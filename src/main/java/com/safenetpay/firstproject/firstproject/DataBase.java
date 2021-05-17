@@ -9,6 +9,7 @@ import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgPool;
 import io.vertx.sqlclient.*;
 
+import java.math.BigInteger;
 import java.util.Iterator;
 
 public class DataBase {
@@ -19,7 +20,7 @@ public class DataBase {
 
   public DataBase(Vertx vertx) {
     connectOptions = new PgConnectOptions()
-      .setPort(5432)
+      .setPort(5433)
       .setHost("localhost")
       .setDatabase("employee")
       .setUser("postgres")
@@ -102,11 +103,11 @@ public class DataBase {
     return answer.future();
   }
 
-  public Future<JsonObject> deleteData(JsonObject employee, Integer id) {
+  public Future<JsonObject> deleteData(Integer id) {
     Promise<JsonObject> answer = Promise.promise();
     client
       .preparedQuery("DELETE FROM employee WHERE id = $1")
-      .execute(Tuple.of(id == null ? employee.getInteger("id") : id),
+      .execute(Tuple.of(id),
         rc -> {
           JsonObject jsonObject = new JsonObject();
           RowSet<Row> rowSet = rc.result();
@@ -259,6 +260,9 @@ public Future<JsonArray> getData(JsonArray jsonArray) {
       });
     return promise.future();
   }
+
+  BigInteger bigInteger = BigInteger.valueOf(2);
+  
 
   public Future<JsonArray> getDataWithFunc() {
     Promise<JsonArray> promise = Promise.promise();
